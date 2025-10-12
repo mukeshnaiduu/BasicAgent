@@ -1,0 +1,6 @@
+order_id,customer_id,product_id,order_date,total_amount,status
+O1001,C001,P050,2024-04-02,149.99,Shipped
+O1002,C002,P010,2024-04-05,89.50,Delivered
+O1003,C003,P050,2024-04-06,159.99,Processing
+O1004,C004,P020,2024-04-07,54.00,Cancelled
+O1005,C005,P015,2024-04-09,299.00,Delivered
