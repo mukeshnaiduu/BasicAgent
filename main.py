@@ -32,5 +32,5 @@ def main() -> None:
     run_cli(task=args.task, auto_confirm=args.auto_confirm, llm_client=llm_client)
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     main()

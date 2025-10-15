@@ -59,7 +59,7 @@ class InteractiveAgent:
 
             try:
                 result_text = self._execute_tool(suggestion)
-            except Exception as exc:  # pragma: no cover - runtime errors
+            except Exception as exc:
                 error_message = f"Tool execution failed: {exc}"
                 print(error_message)
                 self._state.push("assistant", json.dumps({"tool": suggestion.tool, "input": suggestion.input}))

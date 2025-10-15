@@ -92,6 +92,22 @@ Override the model on demand without touching environment variables:
 python main.py "Analyze CSV files" --model gemini-flash-latest
 ```
 
+## Streamlit UI
+
+Launch the Streamlit frontend for a button-driven experience:
+
+```bash
+streamlit run streamlit_app.py
+```
+
+Workflow tips:
+- Enter your Gemini API key in the sidebar (stored only in the current session).
+- If the key already lives in `.env`, the app loads it automatically—no need to re-enter unless you want to override it for the session.
+- Provide an optional model override or enable auto-confirmation from the same panel.
+- Describe a task in the main view; the app requests the first suggestion automatically.
+- Review each proposed tool call, adjust CSV paths when needed, and run or reject the step.
+- The conversation history and loaded DataFrames remain visible for reference.
+
 Sample interaction:
 
 ```
