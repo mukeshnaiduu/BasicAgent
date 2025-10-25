@@ -1,17 +1,13 @@
 # BasicAgent
 
-Interactive AI agent workflow where the model proposes tool executions and the user chooses which "case" to run next.
+Interactive AI agent workflow that can run as a CLI or through a guided Streamlit interface. The Streamlit UI now walks through the full process: capture the task prompt, gather/upload CSVs, review summaries, let the LLM design join steps, and present combined insights.
 
 ## Overview
 
-This project packages a lightweight command-line agent that:
+This project packages two complementary experiences:
 
-- Receives a high-level task from the user (e.g., "Analyze CSV files in folder").
-- Asks an LLM to plan the next step using a fixed base prompt and available tools.
-- Shows each suggested subtask to the user and waits for confirmation before executing it.
-- Executes tool functions (`CSV_TO_VARIABLE`, `SUMMARIZE_DATA`, `COMBINE_SUMMARIZE`) when approved and feeds the results back into the conversation loop.
-
-The workflow keeps the user in control while still leveraging the LLM to plan complex data-analysis sequences.
+- **CLI agent** – a lightweight command-line orchestrator that breaks work into LLM-proposed tool calls you approve step-by-step.
+- **Streamlit workflow** – a richer, stage-based UI that covers the exact flow described in the requirements: capture the prompt, surface expected files, upload/select CSVs, summarize each dataset, let the LLM choose join keys, and deliver combined insights plus metadata.
 
 ## Project Structure
 
@@ -94,52 +90,21 @@ python main.py "Analyze CSV files" --model gemini-flash-latest
 
 ## Streamlit UI
 
-Launch the Streamlit frontend for a button-driven experience:
+Launch the Streamlit frontend for the guided, multi-step workflow:
 
 ```bash
 streamlit run streamlit_app.py
 ```
 
 Workflow tips:
-- Enter your Gemini API key in the sidebar (stored only in the current session).
-- If the key already lives in `.env`, the app loads it automatically—no need to re-enter unless you want to override it for the session.
-- Provide an optional model override or enable auto-confirmation from the same panel.
-- Describe a task in the main view; the app requests the first suggestion automatically.
-- Review each proposed tool call, adjust CSV paths when needed, and run or reject the step.
-- The conversation history and loaded DataFrames remain visible for reference.
+- Enter your Gemini API key in the sidebar (stored only in the current session). If the key already lives in `.env`, the app loads it automatically.
+- Step 1 – Describe your task. The LLM returns a JSON checklist of expected files/notes.
+- Step 2 – Upload CSVs or pick them from a local folder; the UI tracks both sources with a unified checklist.
+- Step 3 – Load every selected CSV into a pandas DataFrame, with summaries and previews rendered for each.
+- Step 4 – Ask the LLM to recommend join keys and join order. The app executes the plan, shows the join steps that ran, and produces a combined summary.
+- Step 5 – Review the final dataset preview, combined summary, and extra insights. Metadata (including join details) is saved to `data/csv_relations.json` for downstream automation.
 
-Sample interaction:
-
-```
-Starting interactive workflow for task: Analyze CSV files in data/
-
---- Iteration 1 ---
-LLM Suggestion:
-Tool: CSV_TO_VARIABLE
-Input: {
-	"path": "data/customers.csv",
-	"name": "df_customers"
-}
-Description: Load customers.csv into df_customers
-Run this step? (y/n/exit): y
-DataFrame 'df_customers' loaded from data/customers.csv with shape (1200, 12).
-
---- Iteration 2 ---
-LLM Suggestion:
-Tool: SUMMARIZE_DATA
-Input: {
-	"df": "df_customers"
-}
-Description: Summarize df_customers to understand key metrics
-Run this step? (y/n/exit): y
-Summary for 'df_customers':
-...
-```
-
-Declining a step (`n`) prompts the LLM for an alternate plan. Type `exit` at any prompt to stop the workflow.
-When loading CSVs, you'll be prompted for the file path relative to the project root—press Enter to accept the suggestion or type a new relative/absolute location. The value you choose is echoed back into the workflow so downstream steps refer to the correct DataFrame.
-
-To run without confirmations (useful for demos), append `--auto-confirm`.
+During the workflow, the UI surfaces structured feedback (LLM recommendations, join plan, insights) and writes an updated `data/csv_relations.json` containing file metadata, join plan, and combined summary so subsequent runs or automations can reuse the context.
 
 ## Implementing Custom Tools
 

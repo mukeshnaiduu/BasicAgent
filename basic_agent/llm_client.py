@@ -63,7 +63,37 @@ class LLMClient:
             raise LLMClientError(f"Failed to obtain suggestion from Gemini: {exc}") from exc
 
         parsed = self._ensure_json(content or "")
-        return ToolSuggestion.from_json(parsed)
+        try:
+            return ToolSuggestion.from_json(parsed)
+        except Exception as exc:
+            # Provide the raw content in the error so the UI can show helpful debug info
+            raw = content or ""
+            raise LLMClientError(f"LLM returned an invalid suggestion payload: {exc}; raw_response={raw}") from exc
+
+    def json_completion(self, prompt: str, *, include_base_prompt: bool = False) -> dict:
+        """Request a structured JSON response from the model using the provided prompt."""
+
+        if include_base_prompt:
+            composed_prompt = f"{self._system_prompt}\n\n{prompt}".strip()
+        else:
+            composed_prompt = prompt
+
+        try:
+            response = self._client.generate_content(
+                composed_prompt,
+                generation_config={"response_mime_type": "application/json"},
+            )
+            content = getattr(response, "text", None)
+            if not content and hasattr(response, "candidates"):
+                content = self._extract_first_text(response)
+        except Exception as exc:  # pragma: no cover - network failures or API issues
+            raise LLMClientError(f"Failed to obtain JSON completion from Gemini: {exc}") from exc
+
+        try:
+            return self._ensure_json(content or "")
+        except LLMClientError as exc:
+            raw = content or ""
+            raise LLMClientError(f"Gemini returned non-JSON content: {raw}") from exc
 
     def _build_prompt(self, history: Iterable[ChatMessage]) -> str:
         lines: List[str] = [self._system_prompt, ""]
