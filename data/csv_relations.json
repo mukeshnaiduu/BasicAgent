@@ -1,10 +1,10 @@
 {
-  "task": "analyse the files",
+  "task": "analyse the uploade files and combined them",
   "files": [
     {
       "name": "df_orders",
       "display_name": "orders.csv",
-      "path": "/workspaces/BasicAgent/data/orders.csv",
+      "path": "uploaded://orders.csv",
       "shape": {
         "rows": 5,
         "columns": 6
@@ -67,57 +67,57 @@
       ]
     },
     {
-      "name": "df_customers",
-      "display_name": "customers.csv",
-      "path": "/workspaces/BasicAgent/data/customers.csv",
+      "name": "df_products",
+      "display_name": "products.csv",
+      "path": "uploaded://products.csv",
       "shape": {
         "rows": 5,
         "columns": 5
       },
       "columns": [
         {
-          "name": "customer_id",
+          "name": "product_id",
           "dtype": "object",
           "sample_values": [
-            "C001",
-            "C002",
-            "C003"
+            "P010",
+            "P015",
+            "P020"
           ]
         },
         {
           "name": "name",
           "dtype": "object",
           "sample_values": [
-            "Aditi Rao",
-            "Ben Howard",
-            "Chloe Kim"
+            "Wireless Mouse",
+            "Noise-Canceling Headphones",
+            "USB-C Hub"
           ]
         },
         {
-          "name": "region",
+          "name": "category",
           "dtype": "object",
           "sample_values": [
-            "West",
-            "North",
-            "South"
+            "Accessories",
+            "Electronics",
+            "Accessories"
           ]
         },
         {
-          "name": "signup_date",
-          "dtype": "object",
+          "name": "price",
+          "dtype": "float64",
           "sample_values": [
-            "2024-01-15",
-            "2023-11-02",
-            "2024-03-28"
+            "29.99",
+            "199.0",
+            "49.5"
           ]
         },
         {
-          "name": "loyalty_score",
+          "name": "inventory",
           "dtype": "int64",
           "sample_values": [
-            "87",
-            "65",
-            "92"
+            "120",
+            "45",
+            "80"
           ]
         }
       ]
@@ -127,38 +127,57 @@
     "start_with": "df_orders",
     "join_steps": [
       {
-        "right": "df_customers",
+        "right": "df_products",
         "on": [
-          "customer_id"
+          "product_id"
         ],
         "how": "left",
-        "result_name": "df_orders_enriched",
-        "comment": "Join order transactions with customer metadata (region, loyalty score) using customer_id. A left join is used to retain all original order records."
+        "result_name": "df_combined_sales",
+        "comment": "Enrich order records with corresponding product details (name, category, price, and inventory) using product_id.",
+        "columns_to_keep": [
+          "order_id",
+          "customer_id",
+          "product_id",
+          "order_date",
+          "total_amount",
+          "status",
+          "name",
+          "category",
+          "price",
+          "inventory"
+        ]
       }
     ],
+    "final_columns": [],
     "insights": [
-      "The merged data allows for analysis of total sales amount segmented by customer attributes such as region and loyalty score.",
-      "The analyst should convert 'order_date' and 'signup_date' to datetime objects for temporal analysis (e.g., calculating customer lifetime value or speed of purchase after sign up).",
-      "Reviewing null values in customer fields after the left join will reveal orders placed by customers not present in the customer data file."
+      "The combined table allows for analyzing sales performance (total_amount) categorized by product name and category.",
+      "The analyst should compare the listed product 'price' with the order 'total_amount' to identify potential sales variations, discounts, or bundles.",
+      "Inventory levels (inventory) can now be monitored alongside recent sales activity (order_date) to manage stock replenishment."
     ],
     "applied_steps": [
       {
-        "right": "df_customers",
+        "right": "df_products",
         "on": [
-          "customer_id"
+          "product_id"
         ],
         "how": "left",
-        "result_name": "df_orders_enriched",
-        "comment": "Join order transactions with customer metadata (region, loyalty score) using customer_id. A left join is used to retain all original order records."
+        "result_name": "df_combined_sales",
+        "comment": "Enrich order records with corresponding product details (name, category, price, and inventory) using product_id.",
+        "columns_retained": [
+          "order_id",
+          "customer_id",
+          "product_id",
+          "order_date",
+          "total_amount",
+          "status",
+          "name",
+          "category",
+          "price",
+          "inventory"
+        ]
       }
     ]
   },
-  "combined_summary": "Rows: 5, Columns: 10\n\nColumn types: order_id:object, customer_id:object, product_id:object, order_date:object, total_amount:float64, status:object, name:object, region:object, signup_date:object, loyalty_score:int64\n\nNumeric summary:\n       total_amount  loyalty_score\ncount         5.000          5.000\nmean        150.496         79.800\nstd          93.776         10.663\nmin          54.000         65.000\n25%          89.500         74.000\n50%         149.990         81.000\n75%         159.990         87.000\nmax         299.000         92.000\n\nSample categorical values:\n  order_id customer_id product_id  order_date      status        name region signup_date\n0    O1001        C001       P050  2024-04-02     Shipped   Aditi Rao   West  2024-01-15\n1    O1002        C002       P010  2024-04-05   Delivered  Ben Howard  North  2023-11-02\n2    O1003        C003       P050  2024-04-06  Processing   Chloe Kim  South  2024-03-28",
-  "insights": [
-    "Total amounts are highly variable (54.00 to 299.00). Investigate if this spread is product-driven or indicative of promotional effects.",
-    "Customer loyalty scores are generally high (mean 79.8, min 65). Leverage this engagement for upsell opportunities or referrals.",
-    "Monitor the 'Processing' status of order O1003 (dated 2024-04-06) to ensure timely fulfillment standards are being met.",
-    "Product P050 appears in 40% of the small sample. Prioritize inventory monitoring for P050, confirming its status as a popular item.",
-    "The data includes recent sign-ups (C003 on 2024-03-28). Analyze if conversion rates or average order value differ for new customers."
-  ]
+  "combined_summary": "Rows: 5, Columns: 10\n\nColumn types: order_id:object, customer_id:object, product_id:object, order_date:object, total_amount:float64, status:object, name:object, category:object, price:float64, inventory:int64\n\nNumeric summary:\n       total_amount    price  inventory\ncount         5.000    5.000      5.000\nmean        150.496  119.694     61.000\nstd          93.776   75.018     38.794\nmin          54.000   29.990     30.000\n25%          89.500   49.500     30.000\n50%         149.990  159.990     45.000\n75%         159.990  159.990     80.000\nmax         299.000  199.000    120.000\n\nSample categorical values:\n  order_id customer_id product_id  order_date      status                 name     category\n0    O1001        C001       P050  2024-04-02     Shipped  Mechanical Keyboard  Electronics\n1    O1002        C002       P010  2024-04-05   Delivered       Wireless Mouse  Accessories\n2    O1003        C003       P050  2024-04-06  Processing  Mechanical Keyboard  Electronics",
+  "insights": []
 }
