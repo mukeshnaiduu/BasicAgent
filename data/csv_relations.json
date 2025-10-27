@@ -1,5 +1,5 @@
 {
-  "task": "analyse the uploade files and combined them",
+  "task": "show the data in the uploaded files along with their individual summaries\nand also combined sumarise",
   "files": [
     {
       "name": "df_orders",
@@ -132,15 +132,15 @@
           "product_id"
         ],
         "how": "left",
-        "result_name": "df_combined_sales",
-        "comment": "Enrich order records with corresponding product details (name, category, price, and inventory) using product_id.",
+        "result_name": "df_orders_products",
+        "comment": "Enrich orders data with product details (name, category, price, inventory) for detailed sales analysis.",
         "columns_to_keep": [
           "order_id",
           "customer_id",
-          "product_id",
           "order_date",
           "total_amount",
           "status",
+          "product_id",
           "name",
           "category",
           "price",
@@ -148,11 +148,20 @@
         ]
       }
     ],
-    "final_columns": [],
+    "final_columns": [
+      "order_id",
+      "order_date",
+      "total_amount",
+      "status",
+      "category",
+      "name",
+      "price",
+      "inventory"
+    ],
     "insights": [
-      "The combined table allows for analyzing sales performance (total_amount) categorized by product name and category.",
-      "The analyst should compare the listed product 'price' with the order 'total_amount' to identify potential sales variations, discounts, or bundles.",
-      "Inventory levels (inventory) can now be monitored alongside recent sales activity (order_date) to manage stock replenishment."
+      "The combined dataset allows for analyzing sales performance (total_amount) grouped by product category and inventory levels.",
+      "The analyst can compare the transactional 'total_amount' with the listed product 'price' to investigate potential discounts or bulk order differences.",
+      "Summaries can calculate key metrics like average order value per product category and identify top-selling products."
     ],
     "applied_steps": [
       {
@@ -161,15 +170,15 @@
           "product_id"
         ],
         "how": "left",
-        "result_name": "df_combined_sales",
-        "comment": "Enrich order records with corresponding product details (name, category, price, and inventory) using product_id.",
+        "result_name": "df_orders_products",
+        "comment": "Enrich orders data with product details (name, category, price, inventory) for detailed sales analysis.",
         "columns_retained": [
           "order_id",
           "customer_id",
-          "product_id",
           "order_date",
           "total_amount",
           "status",
+          "product_id",
           "name",
           "category",
           "price",
@@ -178,6 +187,6 @@
       }
     ]
   },
-  "combined_summary": "Rows: 5, Columns: 10\n\nColumn types: order_id:object, customer_id:object, product_id:object, order_date:object, total_amount:float64, status:object, name:object, category:object, price:float64, inventory:int64\n\nNumeric summary:\n       total_amount    price  inventory\ncount         5.000    5.000      5.000\nmean        150.496  119.694     61.000\nstd          93.776   75.018     38.794\nmin          54.000   29.990     30.000\n25%          89.500   49.500     30.000\n50%         149.990  159.990     45.000\n75%         159.990  159.990     80.000\nmax         299.000  199.000    120.000\n\nSample categorical values:\n  order_id customer_id product_id  order_date      status                 name     category\n0    O1001        C001       P050  2024-04-02     Shipped  Mechanical Keyboard  Electronics\n1    O1002        C002       P010  2024-04-05   Delivered       Wireless Mouse  Accessories\n2    O1003        C003       P050  2024-04-06  Processing  Mechanical Keyboard  Electronics",
+  "combined_summary": "Rows: 5, Columns: 8\n\nColumn types: order_id:object, order_date:object, total_amount:float64, status:object, category:object, name:object, price:float64, inventory:int64\n\nNumeric summary:\n       total_amount    price  inventory\ncount         5.000    5.000      5.000\nmean        150.496  119.694     61.000\nstd          93.776   75.018     38.794\nmin          54.000   29.990     30.000\n25%          89.500   49.500     30.000\n50%         149.990  159.990     45.000\n75%         159.990  159.990     80.000\nmax         299.000  199.000    120.000\n\nSample categorical values:\n  order_id  order_date      status     category                 name\n0    O1001  2024-04-02     Shipped  Electronics  Mechanical Keyboard\n1    O1002  2024-04-05   Delivered  Accessories       Wireless Mouse\n2    O1003  2024-04-06  Processing  Electronics  Mechanical Keyboard",
   "insights": []
 }

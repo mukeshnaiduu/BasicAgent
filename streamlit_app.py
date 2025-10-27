@@ -36,7 +36,10 @@ DEFAULT_SESSION_VALUES = {
     "loaded_frames": [],
     "join_plan": None,
     "combined_frame": None,
+    "combined_frame_name": "",
+    "combined_loaded_frame": None,
     "combined_summary": "",
+    "combined_aliases": [],
     "final_insights": [],
     "task_plan": [],
     "plan_notes": "",
@@ -409,6 +412,14 @@ def append_workflow_node(node: dict) -> None:
     st.session_state.workflow_nodes = nodes
 
 
+def update_workflow_completion() -> None:
+    steps = get_plan_steps()
+    if steps and all(step.get("status") == "completed" for step in steps):
+        st.session_state.workflow_complete = True
+    else:
+        st.session_state.workflow_complete = False
+
+
 def mark_step_completed(step_id: str, result: Optional[dict] = None) -> None:
     step = find_step(step_id)
     if not step:
@@ -425,6 +436,7 @@ def mark_step_completed(step_id: str, result: Optional[dict] = None) -> None:
         st.session_state.auto_run_blocked_step = None
         if "step_retry_counts" in st.session_state:
             st.session_state.step_retry_counts.pop(step_id, None)
+        update_workflow_completion()
         return
 
     step["status"] = "completed"
@@ -443,6 +455,7 @@ def mark_step_completed(step_id: str, result: Optional[dict] = None) -> None:
     st.session_state.auto_run_blocked_step = None
     if "step_retry_counts" in st.session_state:
         st.session_state.step_retry_counts.pop(step_id, None)
+    update_workflow_completion()
     st.session_state.info_message = f"Completed step: {step.get('description', step_id)}"
     st.session_state.error_message = None
 
@@ -516,6 +529,11 @@ def ingest_uploaded_files(uploaded_files: Iterable) -> None:
     st.session_state.workflow_complete = False
     st.session_state.auto_run_blocked_step = None
     st.session_state.error_message = None
+    st.session_state.combined_frame = None
+    st.session_state.combined_frame_name = ""
+    st.session_state.combined_loaded_frame = None
+    st.session_state.combined_summary = ""
+    st.session_state.combined_aliases = []
 
     completed = mark_first_pending_select_step(frames)
     if not completed:
@@ -543,7 +561,12 @@ def ingest_uploaded_files(uploaded_files: Iterable) -> None:
 
 
 def resolve_frames(targets: Optional[List[str]]) -> List[LoadedFrame]:
-    frames: List[LoadedFrame] = st.session_state.get("loaded_frames", []) or []
+    frames: List[LoadedFrame] = list(st.session_state.get("loaded_frames", []) or [])
+    combined_loaded: Optional[LoadedFrame] = st.session_state.get("combined_loaded_frame")
+    if combined_loaded:
+        if all(existing.name != combined_loaded.name for existing in frames):
+            frames.append(combined_loaded)
+
     if not targets:
         return frames
 
@@ -556,6 +579,10 @@ def resolve_frames(targets: Optional[List[str]]) -> List[LoadedFrame]:
                 frame.display_name.lower(),
                 Path(frame.path).name.lower(),
             }
+            if combined_loaded and frame.name == combined_loaded.name:
+                aliases = st.session_state.get("combined_aliases", []) or []
+                compare_values.update(str(alias).strip().lower() for alias in aliases if alias)
+                compare_values.update({"df_combined", "combined", "combined_dataset"})
             if target in compare_values:
                 resolved.append(frame)
                 break
@@ -729,7 +756,43 @@ def execute_step(step_id: str) -> None:
             st.session_state.join_plan = plan | {"applied_steps": applied_steps}
             st.session_state.combined_frame = combined_df
             st.session_state.combined_summary = summary
-            st.session_state.workflow_complete = True
+            alias_candidates = []
+            if applied_steps:
+                final_result = applied_steps[-1].get("result_name")
+                if isinstance(final_result, str):
+                    alias_candidates.append(final_result)
+            start_with = plan.get("start_with")
+            if isinstance(start_with, str):
+                alias_candidates.append(start_with)
+            alias_candidates.append("df_combined")
+            alias_names = [name.strip() for name in alias_candidates if isinstance(name, str) and name.strip()]
+            seen_aliases = set()
+            deduped_aliases: List[str] = []
+            for name in alias_names:
+                key = name.lower()
+                if key in seen_aliases:
+                    continue
+                seen_aliases.add(key)
+                deduped_aliases.append(name)
+            combined_primary_name = deduped_aliases[0] if deduped_aliases else "df_combined"
+            combined_display = (
+                f"{combined_primary_name} (combined)"
+                if combined_primary_name.lower() != "df_combined"
+                else "Combined dataset"
+            )
+            synthetic_path = str(Path("combined") / f"{combined_primary_name}.csv")
+            combined_metadata = extract_metadata(combined_df, combined_primary_name, combined_display, synthetic_path)
+            combined_loaded_frame = LoadedFrame(
+                name=combined_primary_name,
+                display_name=combined_display,
+                path=synthetic_path,
+                dataframe=combined_df,
+                summary=summary,
+                metadata=combined_metadata,
+            )
+            st.session_state.combined_frame_name = combined_primary_name
+            st.session_state.combined_loaded_frame = combined_loaded_frame
+            st.session_state.combined_aliases = deduped_aliases
 
             metadata_warning = None
             try:
@@ -755,6 +818,8 @@ def execute_step(step_id: str) -> None:
                     "summary": summary,
                     "join_steps": applied_steps,
                     "joined_tables": joined_tables,
+                    "dataframe_name": combined_primary_name,
+                    "aliases": deduped_aliases,
                 },
             )
 
@@ -878,6 +943,11 @@ def render_workflow_nodes() -> None:
                 st.caption("Joined tables")
                 st.write(", ".join(joined_tables))
 
+            aliases = node.get("aliases") or []
+            if aliases:
+                st.caption("Dataframe aliases")
+                st.write(", ".join(aliases))
+
             insights = node.get("insights") or []
             if insights:
                 st.caption("Insights")
@@ -990,7 +1060,10 @@ def handle_prompt_submission(task: str) -> None:
         st.session_state.auto_run_lock = False
         st.session_state.join_plan = None
         st.session_state.combined_frame = None
+        st.session_state.combined_frame_name = ""
+        st.session_state.combined_loaded_frame = None
         st.session_state.combined_summary = ""
+        st.session_state.combined_aliases = []
         st.session_state.final_insights = []
         return
 
@@ -1003,7 +1076,10 @@ def handle_prompt_submission(task: str) -> None:
     st.session_state.pop("execution_log", None)
     st.session_state.join_plan = None
     st.session_state.combined_frame = None
+    st.session_state.combined_frame_name = ""
+    st.session_state.combined_loaded_frame = None
     st.session_state.combined_summary = ""
+    st.session_state.combined_aliases = []
     st.session_state.final_insights = []
     st.session_state.workflow_complete = False
     st.session_state.auto_run_blocked_step = None
@@ -1064,7 +1140,10 @@ if reset_request:
             "uploaded_signature": (),
             "join_plan": None,
             "combined_frame": None,
+            "combined_frame_name": "",
+            "combined_loaded_frame": None,
             "combined_summary": "",
+            "combined_aliases": [],
             "final_insights": [],
             "task_plan": [],
             "plan_notes": "",
