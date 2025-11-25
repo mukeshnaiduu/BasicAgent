@@ -40,8 +40,6 @@ def cleanup_uploads() -> None:
     except Exception:
         pass
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
-
 def main() -> None:
     page_setup("BasicAgent Streamlit")
     settings = load_settings()
@@ -51,10 +49,14 @@ def main() -> None:
     with left_col:
         st.header("Inputs")
         provider_options = [f"Ollama ({settings.ollama_model})", f"Gemini ({settings.gemini_model})"]
-        default_provider = provider_options[0]
+        # Prefer Gemini as the default when the API key is configured to avoid
+        # requiring a local Ollama server unless the user explicitly picks it.
+        has_gemini = bool(settings.gemini_api_key)
+        default_provider = provider_options[1] if has_gemini else provider_options[0]
         if "llm_provider" not in st.session_state:
             st.session_state.llm_provider = default_provider
-        provider = st.selectbox("LLM provider", provider_options, index=provider_options.index(st.session_state.llm_provider) if st.session_state.llm_provider in provider_options else 0, key="llm_provider_select")
+        provider_index = provider_options.index(st.session_state.llm_provider) if st.session_state.llm_provider in provider_options else provider_options.index(default_provider)
+        provider = st.selectbox("LLM provider", provider_options, index=provider_index, key="llm_provider_select")
         st.session_state.llm_provider = provider
         if provider.startswith("Ollama"):
             st.caption("Ensure the Ollama service is running (e.g., `ollama run llama3.1`).")
@@ -115,14 +117,16 @@ def main() -> None:
                 st.info("No session dataframes were produced.")
 
             history_entries = res.get("history") or []
+            st.subheader("Workflow Thread")
             if history_entries:
-                st.subheader("Run history")
                 for idx, entry in enumerate(history_entries, start=1):
                     if isinstance(entry, dict):
                         content = entry.get("content") or entry
                     else:
                         content = str(entry)
-                    st.markdown(f"{idx}. {content}")
+                    st.markdown(f"**{idx}.** {content}")
+            else:
+                st.info("No workflow history entries available for this run.")
 
     if run_btn:
         if not task:
@@ -148,7 +152,14 @@ def main() -> None:
                     st.session_state.agent_result = result
                     st.success("Workflow completed")
                 except Exception as e:
-                    st.error(f"Agent execution failed: {e}")
+                    err_msg = str(e)
+                    if provider_label.startswith("Ollama") and "Ollama request failed" in err_msg:
+                        st.error(
+                            "Could not reach the Ollama server. Please start Ollama (e.g., `ollama serve` or `ollama run <model>`)."
+                        )
+                        st.info("Tip: switch the LLM provider to Gemini if you have an API key configured.")
+                    else:
+                        st.error(f"Agent execution failed: {err_msg}")
                 finally:
                     # cleanup uploads per your request
                     cleanup_uploads()
